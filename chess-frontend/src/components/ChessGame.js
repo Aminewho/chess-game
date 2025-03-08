@@ -10,6 +10,8 @@ export default function ChessGame() {
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [validMoves, setValidMoves] = useState([]);
   const [promotionMove, setPromotionMove] = useState(null);
+  const [gameHistory, setGameHistory] = useState(["start"]); // Store all FEN states
+  const [currentHistoryIndex, setCurrentHistoryIndex] = useState(0); // Current displayed move
 
   useEffect(() => {
     fetchBoardState();
@@ -20,6 +22,8 @@ export default function ChessGame() {
       const response = await axios.get("http://localhost:8080/api/board");
       setPosition(response.data);
       setChess(new Chess(response.data));
+      setGameHistory([response.data]); // Initialize history with starting position
+      setCurrentHistoryIndex(0);
     } catch (error) {
       console.error("Error fetching board state:", error);
     }
@@ -28,23 +32,18 @@ export default function ChessGame() {
   const getValidMoves = (square) => {
     return chess.moves({ square, verbose: true }).map((move) => move.to);
   };
-  
+
   const onSquareClick = (square) => {
     if (gameOver) return;
   
+    // Block moves if not in the latest position
+    if (currentHistoryIndex !== gameHistory.length - 1) {
+      alert("You must return to the latest position to make a move!");
+      return;
+    }
+  
     if (selectedSquare) {
       if (validMoves.includes(square)) {
-        const piece = chess.get(selectedSquare);
-        
-        // Check if pawn is promoting
-        if (piece?.type === "p" && (square[1] === "8" || square[1] === "1")) {
-          setPromotionMove({ from: selectedSquare, to: square });
-          setSelectedSquare(null);
-          setValidMoves([]);
-          return; // Stop further execution until promotion is chosen
-        }
-  
-        // Normal move
         handleMove(selectedSquare, square);
       }
       setSelectedSquare(null);
@@ -58,6 +57,7 @@ export default function ChessGame() {
     }
   };
   
+
   const handleMove = async (sourceSquare, targetSquare, promotion = null) => {
     const piece = chess.get(sourceSquare);
     if (!piece) return;
@@ -67,7 +67,7 @@ export default function ChessGame() {
     if (piece.type === "p" && (targetSquare[1] === "8" || targetSquare[1] === "1")) {
       if (!promotion) {
         setPromotionMove({ from: sourceSquare, to: targetSquare });
-        return; 
+        return;
       }
       move.promotion = promotion.toLowerCase();
     }
@@ -92,6 +92,10 @@ export default function ChessGame() {
       setChess(new Chess(response.data));
       setSelectedSquare(null);
       setValidMoves([]);
+
+      // Update history with new position
+      setGameHistory((prev) => [...prev, response.data]);
+      setCurrentHistoryIndex((prev) => prev + 1);
     } catch (error) {
       console.error("Invalid move:", error);
     }
@@ -99,28 +103,33 @@ export default function ChessGame() {
 
   const handlePromotionSelection = (piece) => {
     if (!promotionMove) return;
-  
     const promotionLetter = piece.toLowerCase().charAt(1);
-  
     handleMove(promotionMove.from, promotionMove.to, promotionLetter);
     setPromotionMove(null);
   };
-  
+
   const onDrop = async ({ sourceSquare, targetSquare }) => {
     if (gameOver) return false;
-
+  
+    // Block moves if user is not in the latest position
+    if (currentHistoryIndex !== gameHistory.length - 1) {
+      alert("You must return to the latest position to make a move!");
+      return false;
+    }
+  
     const validSquares = getValidMoves(sourceSquare);
     if (!validSquares.includes(targetSquare)) return false;
-
+  
     const piece = chess.get(sourceSquare);
     if (piece.type === "p" && (targetSquare[1] === "8" || targetSquare[1] === "1")) {
       setPromotionMove({ from: sourceSquare, to: targetSquare });
       return false;
     }
-
+  
     await handleMove(sourceSquare, targetSquare);
     return true;
   };
+  
 
   const resetBoard = async () => {
     try {
@@ -134,6 +143,20 @@ export default function ChessGame() {
     }
   };
 
+  const goBack = () => {
+    if (currentHistoryIndex > 0) {
+      setCurrentHistoryIndex(currentHistoryIndex - 1);
+      setPosition(gameHistory[currentHistoryIndex - 1]);
+    }
+  };
+
+  const goForward = () => {
+    if (currentHistoryIndex < gameHistory.length - 1) {
+      setCurrentHistoryIndex(currentHistoryIndex + 1);
+      setPosition(gameHistory[currentHistoryIndex + 1]);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center relative">
       <h1 className="text-2xl font-bold mb-4">Online Chess Game</h1>
@@ -144,12 +167,14 @@ export default function ChessGame() {
         boardWidth={400}
         customSquareStyles={Object.fromEntries(validMoves.map((sq) => [sq, { backgroundColor: "rgba(255, 255, 0, 0.5)" }]))}
         allowDrag={({ piece, sourceSquare }) => getValidMoves(sourceSquare).length > 0}
-        promotionToSquare={promotionMove ? promotionMove.to : undefined}  
-        onPromotionPieceSelect={handlePromotionSelection} 
+        promotionToSquare={promotionMove ? promotionMove.to : undefined}
+        onPromotionPieceSelect={handlePromotionSelection}
       />
-      <button onClick={resetBoard} className="mt-4 p-2 bg-blue-500 text-white rounded">
-        Reset Board
-      </button>
+      <div className="mt-4 flex gap-4">
+        <button onClick={goBack} className="p-2 bg-gray-500 text-white rounded">←</button>
+        <button onClick={resetBoard} className="p-2 bg-blue-500 text-white rounded">Reset Board</button>
+        <button onClick={goForward} className="p-2 bg-gray-500 text-white rounded">→</button>
+      </div>
     </div>
   );
 }

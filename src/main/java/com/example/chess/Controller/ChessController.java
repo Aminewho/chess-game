@@ -23,8 +23,14 @@ public class ChessController {
         System.out.println("Received move: " + move.getMoveNotation());
         return chessLogicService.applyMove(move.getMoveNotation());
     }
+
     @PostMapping("/reset")
     public void resetBoard() {
         chessLogicService.resetBoard();
+    }
+
+    @PostMapping("/undo")
+    public String undoLastMove() {
+        return chessLogicService.undoMove();
     }
 }
