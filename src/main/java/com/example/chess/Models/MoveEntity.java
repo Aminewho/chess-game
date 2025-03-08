@@ -1,42 +1,32 @@
 package com.example.chess.Models;
-
 import jakarta.persistence.*;
+import com.github.bhlangonijr.chesslib.move.Move;
+import java.time.LocalDateTime;
 
 @Entity
-public class Move {
+public class MoveEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String fromPosition; // E.g., "e2"
-
-    @Column(nullable = false)
-    private String toPosition; // E.g., "e4"
-
-    @Column(nullable = false)
-    private String piece; // E.g., "PAWN", "KNIGHT", etc.
-
-    @Column(nullable = true)
-    private String capturedPiece; // E.g., "PAWN", "BISHOP", or null if no capture.
-
-    @Column(nullable = false)
-    private String player; // "WHITE" or "BLACK"
-
     @ManyToOne
     @JoinColumn(name = "game_id", nullable = false)
-    private Game game; // Links the move to a specific game.
+    private Game game;
+
+    @Column(nullable = false, length = 10)
+    private String moveNotation; // Store move in standard chess notation (e.g., "e2e4")
+
+    @Column(nullable = false)
+    private LocalDateTime timestamp;
 
     // Constructors
-    public Move() {
-    }
+    public MoveEntity() {}
 
-    public Move(String fromPosition, String toPosition, String piece, String player) {
-        this.fromPosition = fromPosition;
-        this.toPosition = toPosition;
-        this.piece = piece;
-        this.player = player;
+    public MoveEntity(Game game, Move move) {
+        this.game = game;
+        this.moveNotation = move.toString(); // Convert Move to String
+        this.timestamp = LocalDateTime.now();
     }
 
     // Getters and Setters
@@ -48,51 +38,27 @@ public class Move {
         this.id = id;
     }
 
-    public String getFromPosition() {
-        return fromPosition;
-    }
-
-    public void setFromPosition(String fromPosition) {
-        this.fromPosition = fromPosition;
-    }
-
-    public String getToPosition() {
-        return toPosition;
-    }
-
-    public void setToPosition(String toPosition) {
-        this.toPosition = toPosition;
-    }
-
-    public String getPiece() {
-        return piece;
-    }
-
-    public void setPiece(String piece) {
-        this.piece = piece;
-    }
-
-    public String getCapturedPiece() {
-        return capturedPiece;
-    }
-
-    public void setCapturedPiece(String capturedPiece) {
-        this.capturedPiece = capturedPiece;
-    }
-
-    public String getPlayer() {
-        return player;
-    }
-
-    public void setPlayer(String player) {
-        this.player = player;
-    }
-
     public Game getGame() {
         return game;
     }
 
     public void setGame(Game game) {
         this.game = game;
+    }
+
+    public String getMoveNotation() {
+        return moveNotation;
+    }
+  
+    public void setMoveNotation(String moveNotation) {
+        this.moveNotation = moveNotation;
+    }
+
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(LocalDateTime timestamp) {
+        this.timestamp = timestamp;
     }
 }
