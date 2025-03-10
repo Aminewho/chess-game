@@ -35,6 +35,7 @@ export default function ChessGame() {
 
   const onSquareClick = (square) => {
     if (gameOver) return;
+    console.log("ONsquareClick");
   
     // Block moves if not in the latest position
     if (currentHistoryIndex !== gameHistory.length - 1) {
@@ -44,6 +45,14 @@ export default function ChessGame() {
   
     if (selectedSquare) {
       if (validMoves.includes(square)) {
+        console.log("selectedSquare", selectedSquare);
+        console.log("square", square);
+  
+        // Check if the move is a promotion move
+        const piece = chess.get(selectedSquare);
+       
+  
+        // If not a promotion, proceed with the move
         handleMove(selectedSquare, square);
       }
       setSelectedSquare(null);
@@ -57,19 +66,24 @@ export default function ChessGame() {
     }
   };
   
+  
 
   const handleMove = async (sourceSquare, targetSquare, promotion = null) => {
     const piece = chess.get(sourceSquare);
     if (!piece) return;
+    
 
     let move = { from: sourceSquare, to: targetSquare };
 
     if (piece.type === "p" && (targetSquare[1] === "8" || targetSquare[1] === "1")) {
       if (!promotion) {
         setPromotionMove({ from: sourceSquare, to: targetSquare });
+        console.log("Promotion move:********", move);
         return;
       }
       move.promotion = promotion.toLowerCase();
+      console.log("Promotion move: dandan", move);
+
     }
 
     const validMove = chess.move(move);
@@ -102,13 +116,22 @@ export default function ChessGame() {
   };
 
   const handlePromotionSelection = (piece) => {
-    if (!promotionMove) return;
+    if (!promotionMove || !promotionMove.from || !promotionMove.to) return false; // Return false if invalid
+
     const promotionLetter = piece.toLowerCase().charAt(1);
     handleMove(promotionMove.from, promotionMove.to, promotionLetter);
     setPromotionMove(null);
-  };
+
+    console.log("handlePromotionSelection", piece);
+    return true; // Return true if the move was successful
+};
 
   const onDrop = async ({ sourceSquare, targetSquare }) => {
+    if (!sourceSquare || !targetSquare) {
+      console.error("Invalid source or target square:", sourceSquare, targetSquare);
+      return;
+    }
+    console.log("zebi",sourceSquare);
     if (gameOver) return false;
   
     // Block moves if user is not in the latest position
@@ -119,12 +142,19 @@ export default function ChessGame() {
   
     const validSquares = getValidMoves(sourceSquare);
     if (!validSquares.includes(targetSquare)) return false;
-  
     const piece = chess.get(sourceSquare);
+    console.log("piece",piece);
+    console.log(targetSquare[1]);
+
     if (piece.type === "p" && (targetSquare[1] === "8" || targetSquare[1] === "1")) {
-      setPromotionMove({ from: sourceSquare, to: targetSquare });
+      console.log("promondrop",piece);
+      setPromotionMove((prev) => ({
+        from: prev?.from === sourceSquare ? prev.from : sourceSquare,
+        to: prev?.to === targetSquare ? prev.to : targetSquare,
+      }));
       return false;
     }
+    
   
     await handleMove(sourceSquare, targetSquare);
     return true;
@@ -162,11 +192,12 @@ export default function ChessGame() {
       <h1 className="text-2xl font-bold mb-4">Online Chess Game</h1>
       <Chessboard
         position={position}
+        showPromotionDialog={true}
         onPieceDrop={(sourceSquare, targetSquare) => onDrop({ sourceSquare, targetSquare })}
         onSquareClick={onSquareClick}
         boardWidth={400}
         customSquareStyles={Object.fromEntries(validMoves.map((sq) => [sq, { backgroundColor: "rgba(255, 255, 0, 0.5)" }]))}
-        allowDrag={({ piece, sourceSquare }) => getValidMoves(sourceSquare).length > 0}
+        //allowDrag={({ piece, sourceSquare }) => getValidMoves(sourceSquare).length > 0}
         promotionToSquare={promotionMove ? promotionMove.to : undefined}
         onPromotionPieceSelect={handlePromotionSelection}
       />
