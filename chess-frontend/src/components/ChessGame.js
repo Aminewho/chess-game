@@ -71,7 +71,6 @@ export default function ChessGame() {
   const handleMove = async (sourceSquare, targetSquare, promotion = null) => {
     const piece = chess.get(sourceSquare);
     if (!piece) return;
-    
 
     let move = { from: sourceSquare, to: targetSquare };
 
@@ -83,7 +82,6 @@ export default function ChessGame() {
       }
       move.promotion = promotion.toLowerCase();
       console.log("Promotion move: dandan", move);
-
     }
 
     const validMove = chess.move(move);
@@ -96,12 +94,20 @@ export default function ChessGame() {
       const moveNotation = `${move.from}${move.to}${move.promotion || ""}`;
       const response = await axios.post("http://localhost:8080/api/move", { moveNotation });
 
+      // Check if the game is over
       if (response.data.includes("CHECKMATE") || response.data.includes("DRAW")) {
-        alert(response.data);
         setGameOver(true);
+
+        // First, update the board to reflect the final position
+        setPosition(chess.fen());
+        setChess(new Chess(chess.fen()));
+
+        // Then, display the alert after a short delay to ensure the UI updates first
+        setTimeout(() => alert(response.data), 100);
         return;
       }
 
+      // If the game is not over, update the board normally
       setPosition(response.data);
       setChess(new Chess(response.data));
       setSelectedSquare(null);
@@ -114,6 +120,7 @@ export default function ChessGame() {
       console.error("Invalid move:", error);
     }
   };
+
 
   const handlePromotionSelection = (piece) => {
     if (!promotionMove || !promotionMove.from || !promotionMove.to) return false; // Return false if invalid
@@ -131,7 +138,6 @@ export default function ChessGame() {
       console.error("Invalid source or target square:", sourceSquare, targetSquare);
       return;
     }
-    console.log("zebi",sourceSquare);
     if (gameOver) return false;
   
     // Block moves if user is not in the latest position
@@ -172,7 +178,19 @@ export default function ChessGame() {
       console.error("Error resetting board:", error);
     }
   };
-
+  const undoMove = async () => {
+    try {
+      const response = await axios.post("http://localhost:8080/api/undo");
+      setPosition(response.data);
+      setChess(new Chess(response.data));
+  
+      // Update history state
+      setGameHistory((prev) => prev.slice(0, -1));
+      setCurrentHistoryIndex((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Error undoing move:", error);
+    }
+  };
   const goBack = () => {
     if (currentHistoryIndex > 0) {
       setCurrentHistoryIndex(currentHistoryIndex - 1);
@@ -205,6 +223,9 @@ export default function ChessGame() {
         <button onClick={goBack} className="p-2 bg-gray-500 text-white rounded">←</button>
         <button onClick={resetBoard} className="p-2 bg-blue-500 text-white rounded">Reset Board</button>
         <button onClick={goForward} className="p-2 bg-gray-500 text-white rounded">→</button>
+        <button onClick={undoMove} className="p-2 bg-red-500 text-white rounded">
+  Undo Move
+</button>
       </div>
     </div>
   );
